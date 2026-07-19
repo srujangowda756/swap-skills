@@ -3,7 +3,7 @@ from schema.user import user_credentials
 from models.user import User
 from utility import hash_password
 
-user_router= APIRouter(prefix="user",tags=["user"])
+user_router= APIRouter(prefix="/user",tags=["user"])
 
 @user_router.post("/register", status_code=201)
 def user_register(user_details:user_credentials):
