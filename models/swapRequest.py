@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from uuid import uuid4
 from datetime import datetime, timezone
+from sqlalchemy.orm import relationship
 
 class SwapRequest(Base):
     __tablename__ = "swap_requests"
@@ -14,4 +15,5 @@ class SwapRequest(Base):
     skill_offered = Column(UUID(as_uuid=True), ForeignKey("skills.id"), nullable=False)
     skill_requested = Column(UUID(as_uuid=True), ForeignKey("skills.id"), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    
+    reviews = relationship("Review", back_populates="swap_request")
+
