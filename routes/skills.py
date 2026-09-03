@@ -1,24 +1,35 @@
-from fastapi import APIRouter,Depends,HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
-from schema.skills import SkillCreate, SkillResponse
-from models.skills import Skills
+from schema.skills import SkillResponse, SkillCreate
+from models.skills import Skill
 from database import get_db
-from utility import get_current_user
+from typing import List
 
-skills_router = APIRouter(prefix="/skills", tags=["skills"])
+skill_router = APIRouter(prefix="/skills", tags=["skills"])
 
-@skills_router.post("/", status_code=201, response_model=SkillResponse)
-async def create_skill(skill: SkillCreate, current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    user_id = current_user.get("sub")
-    new_skill = Skills(name=skill.name, type=skill.type, user_id=user_id)
+@skill_router.get("/", response_model=List[SkillResponse])
+async def list_skills(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Skill).order_by(Skill.skill_name.asc()))
+    return result.scalars().all()
+
+@skill_router.post("/", response_model=SkillResponse, status_code=201)
+async def create_skill(skill_data: SkillCreate, db: AsyncSession = Depends(get_db)):
+    # Check if skill with same name exists
+    existing = await db.execute(select(Skill).where(Skill.skill_name.ilike(skill_data.skill_name.strip())))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Skill with this name already exists")
+    
+    new_skill = Skill(
+        skill_name=skill_data.skill_name.strip(),
+        description=skill_data.description.strip(),
+    )
     db.add(new_skill)
-    await db.commit()
-    await db.refresh(new_skill)
-    return new_skill
-
-@skills_router.get("/user/{user_id}", response_model=list[SkillResponse])
-async def get_user_skills(user_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Skills).where(Skills.user_id == user_id))
-    skills = result.scalars().all()
-    return skills
+    try:
+        await db.commit()
+        await db.refresh(new_skill)
+        return new_skill
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Skill could not be created")

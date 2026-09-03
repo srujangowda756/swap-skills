@@ -3,14 +3,14 @@ from uuid import UUID
 from datetime import datetime
 
 class SkillCreate(BaseModel):
-    name: str
-    type: str
+    skill_name: str
+    description: str
 
 class SkillResponse(BaseModel):
     id: UUID
-    name: str
-    type: str
-    user_id: UUID
-    
+    skill_name: str
+    description: str
+    added_at: datetime
+
     class Config:
         from_attributes = True

@@ -1,14 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes.user import user_router
-from routes.skills import skills_router
-from routes.swapRequest import swap_router
+from routes.skills import skill_router
+from routes.user_skills import user_skill_router
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,5 +19,5 @@ def read_root():
     return {"Hello": "World"}
 
 app.include_router(user_router)
-app.include_router(skills_router)
-app.include_router(swap_router)
+app.include_router(skill_router)
+app.include_router(user_skill_router)

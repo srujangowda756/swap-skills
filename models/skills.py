@@ -1,15 +1,15 @@
-from sqlalchemy.orm import relationship
 from database import Base
-from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy import Column, String, DateTime
+from datetime import datetime, timezone
 from sqlalchemy.dialects.postgresql import UUID
 from uuid import uuid4
 from sqlalchemy.orm import relationship
 
-class Skills(Base):
-    __tablename__="skills"
-    
+class Skill(Base):
+    __tablename__ = "skills"
+
     id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)
-    name = Column(String, nullable=False)
-    type = Column(String, nullable=False)
-    user_id= Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    user = relationship("User", back_populates="skills")
+    skill_name = Column(String, nullable=False, unique=True)
+    description = Column(String, nullable=False)
+    added_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    user_links = relationship("UserSkill", back_populates="skill")
