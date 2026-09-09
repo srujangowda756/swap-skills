@@ -10,12 +10,20 @@ from database import Base
 from models.user import User
 from models.skills import Skill
 from models.user_skills import UserSkill
+from config import settings
 
 target_metadata = Base.metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# Dynamically set database URL from .env / settings
+if settings.DATABASE_URL:
+    db_url = settings.DATABASE_URL
+    if db_url.startswith("postgresql+asyncpg://"):
+        db_url = db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+    config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
