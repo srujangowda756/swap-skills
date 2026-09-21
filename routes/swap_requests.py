@@ -11,6 +11,8 @@ from models.swap_requests import SwapRequest, RequestStatus
 from models.user import User
 from database import get_db
 from dependencies import get_current_user
+from models.notifications import Notification
+
 
 swap_request_router = APIRouter(prefix="/swap-requests", tags=["swap-requests"])
 
@@ -25,6 +27,9 @@ async def send_request(
 
     new_request = SwapRequest(sender_id=current_user.id, receiver_id=data.receiver_id)
     db.add(new_request)
+    
+    notification = Notification(user_id=data.receiver_id,type="request_received",reference_id=new_request.id,message=f"{current_user.name} sent you a swap request",)
+    db.add(notification)
     try:
         await db.commit()
         await db.refresh(new_request)
@@ -78,7 +83,8 @@ async def accept_request(
 
     new_conversation = Conversation(swap_request_id=req.id)
     db.add(new_conversation)
-
+    notification = Notification(user_id=req.sender_id,type="request_accepted",reference_id=req.id,message=f"{current_user.name} accepted your swap request",)
+    db.add(notification)
     await db.commit()
     await db.refresh(req)
     return req

@@ -11,6 +11,7 @@ from database import Base
 from models.user import User
 from models.skills import Skill
 from models.user_skills import UserSkill
+from models.notifications import Notification
 from config import settings
 
 target_metadata = Base.metadata

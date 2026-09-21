@@ -6,7 +6,8 @@ from routes.user_skills import user_skill_router
 from routes.swap_requests import swap_request_router
 from routes.messages import message_router
 from routes.conversations import conversation_router
-
+from routes.notifications import notification_router
+from routes.websocket import ws_router
 
 app = FastAPI()
 
@@ -28,3 +29,5 @@ app.include_router(user_skill_router)
 app.include_router(swap_request_router)
 app.include_router(message_router)
 app.include_router(conversation_router)
+app.include_router(notification_router)
+app.include_router(ws_router)
