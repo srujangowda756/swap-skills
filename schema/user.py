@@ -19,3 +19,10 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class VerifyOTP(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=6, max_length=6)
+
+class ResendOTP(BaseModel):
+    email: EmailStr

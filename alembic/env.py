@@ -12,6 +12,8 @@ from models.user import User
 from models.skills import Skill
 from models.user_skills import UserSkill
 from models.notifications import Notification
+from models.otp import OTP
+from models.secret_key import SecretKey
 from config import settings
 
 target_metadata = Base.metadata
