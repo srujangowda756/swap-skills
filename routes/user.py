@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.exc import IntegrityError
-from schema.user import UserResponse, UserLogin, UserRegister, VerifyOTP, ResendOTP
+from schema.user import UserResponse, UserLogin, UserRegister, VerifyOTP, ResendOTP,ForgetPassword,ResetPassword
 from models.user import User
 from models.otp import OTP
 from utility import hash_password, verify_password, create_access_token, generate_otp, send_otp_email
@@ -50,7 +50,8 @@ async def user_register(
         )
         db.add(new_user)
         await db.flush()  # assigns new_user.id
-        db.add(OTP(user_id=new_user.id, code_hash=_hash_otp(otp), expires_at=_expiry()))
+        otp_entry = OTP(user_id=new_user.id, code_hash=_hash_otp(otp), expires_at=_expiry())
+        db.add(otp_entry)
         await db.commit()
         await db.refresh(new_user)
     except IntegrityError:
@@ -64,6 +65,44 @@ async def user_register(
     background_tasks.add_task(send_otp_email, new_user.email, otp)
     return new_user
 
+
+@user_router.post("/forget-password", status_code=200)
+async def forget_password(forget_password: ForgetPassword, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+    user= await db.execute(select(User).where(User.email == forget_password.email))
+    user = user.scalar_one_or_none()
+    if user:
+        otp = generate_otp()
+        await db.execute(delete(OTP).where(OTP.user_id == user.id))
+        otp_entry = OTP(user_id=user.id, code_hash=_hash_otp(otp), expires_at=_expiry())
+        db.add(otp_entry)
+        await db.commit()
+        background_tasks.add_task(send_otp_email, user.email, otp)
+    return {"message": "If the account exists and is verified, a password reset code was sent"}
+
+
+@user_router.put("/set-new-password",status_code=200)
+async def set_new_password(reset_password:ResetPassword,db:AsyncSession = Depends(get_db)):
+
+    if reset_password.password !=reset_password.confirm_password:
+        raise HTTPException(status_code=400,detail="password and confirm password dont match")
+    
+    user= await db.execute(select(User).where(User.email==reset_password.email))
+    user=user.scalar_one_or_none()
+
+    if not user or not user.is_verified:
+        raise HTTPException(status_code=403,detail="Invalid input")
+
+    claimed = await db.execute(update(OTP).where(OTP.user_id==user.id,OTP.attempts < int(get_secret("MAX_OTP_ATTEMPTS")),OTP.expires_at > datetime.now(timezone.utc),).values(attempts=OTP.attempts+1).returning(OTP.code_hash))
+
+    row = claimed.first()
+    await db.commit()
+    
+    if row is None or not hmac.compare_digest(row.code_hash, _hash_otp(reset_password.otp)):
+        raise HTTPException(status_code=400, detail="Invalid or expired code")
+    
+    await db.execute(update(User).where(User.id==user.id).values(password=hash_password(reset_password.password)))
+    await db.execute(delete(OTP).where(OTP.user_id==user.id))
+    await db.commit()
 
 # verify the emailed code
 @user_router.post("/verify-otp", status_code=200)
@@ -111,7 +150,7 @@ async def resend_otp(
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
-    if user and not user.is_verified:
+    if not user or not user.is_verified:
         user_id, email = user.id, user.email
         existing = (
             await db.execute(select(OTP).where(OTP.user_id == user_id))
@@ -123,7 +162,8 @@ async def resend_otp(
 
         otp = generate_otp()
         await db.execute(delete(OTP).where(OTP.user_id == user_id))
-        db.add(OTP(user_id=user_id, code_hash=_hash_otp(otp), expires_at=_expiry()))
+        otp_entry = OTP(user_id=user_id, code_hash=_hash_otp(otp), expires_at=_expiry())
+        db.add(otp_entry)
         await db.commit()
         background_tasks.add_task(send_otp_email, email, otp)
 
@@ -139,7 +179,7 @@ async def user_login(user_login: UserLogin, db: AsyncSession = Depends(get_db)):
     if not user or not verify_password(user_login.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if not user.is_verified:
+    if not user or not user.is_verified:
         raise HTTPException(status_code=403, detail="Email not verified")
 
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
