@@ -15,6 +15,8 @@ from models.notifications import Notification
 from models.otp import OTP
 from models.secret_key import SecretKey
 from config import settings
+from models.review import Review
+from models.session import Session
 
 target_metadata = Base.metadata
 

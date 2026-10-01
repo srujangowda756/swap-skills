@@ -41,6 +41,19 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: UUID, token:
 
         await manager.connect(conversation_id, user_id, websocket)
         try:
+            await websocket.send_json({
+                "type": "presence_snapshot",
+                "online_user_ids": [
+                    connected_user_id
+                    for connected_user_id in manager.connected_user_ids(conversation_id)
+                    if connected_user_id != user_id
+                ],
+            })
+            await manager.broadcast(conversation_id, {
+                "type": "presence",
+                "user_id": user_id,
+                "online": True,
+            })
             while True:
                 data = await websocket.receive_json()
                 new_message = Message(
@@ -78,4 +91,12 @@ async def websocket_endpoint(websocket: WebSocket, conversation_id: UUID, token:
                     db.add(notification)
                     await db.commit()
         except WebSocketDisconnect:
+            pass
+        finally:
             manager.disconnect(conversation_id, websocket)
+            if not manager.is_user_connected(conversation_id, user_id):
+                await manager.broadcast(conversation_id, {
+                    "type": "presence",
+                    "user_id": user_id,
+                    "online": False,
+                })

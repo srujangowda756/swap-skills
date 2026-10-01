@@ -21,6 +21,9 @@ class ConnectionManager:
     def is_user_connected(self, conversation_id: UUID, user_id: str) -> bool:
         return any(uid == user_id for uid, _ in self.active_connections.get(conversation_id, []))
 
+    def connected_user_ids(self, conversation_id: UUID) -> List[str]:
+        return list(dict.fromkeys(uid for uid, _ in self.active_connections.get(conversation_id, [])))
+
     async def broadcast(self, conversation_id: UUID, message: dict):
         for _, connection in self.active_connections.get(conversation_id, []):
             await connection.send_json(message)

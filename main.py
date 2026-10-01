@@ -13,6 +13,8 @@ from routes.swap_requests import swap_request_router
 from routes.messages import message_router
 from routes.conversations import conversation_router
 from routes.notifications import notification_router
+from routes.session import session_router
+from routes.review import review_router
 from routes.websocket import ws_router
 from routes.admin import admin_router
 
@@ -50,5 +52,7 @@ app.include_router(swap_request_router)
 app.include_router(message_router)
 app.include_router(conversation_router)
 app.include_router(notification_router)
+app.include_router(session_router)
+app.include_router(review_router)
 app.include_router(ws_router)
 app.include_router(admin_router)
