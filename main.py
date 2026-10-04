@@ -1,22 +1,25 @@
 from contextlib import asynccontextmanager
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from database import SessionLocal
 from secret_store import load_secrets
 
-from routes.user import user_router
-from routes.skills import skill_router
-from routes.user_skills import user_skill_router
-from routes.swap_requests import swap_request_router
-from routes.messages import message_router
-from routes.conversations import conversation_router
-from routes.notifications import notification_router
-from routes.session import session_router
-from routes.review import review_router
-from routes.websocket import ws_router
 from routes.admin import admin_router
+from routes.conversations import conversation_router
+from routes.messages import message_router
+from routes.notifications import notification_router
+from routes.review import review_router
+from routes.session import session_router
+from routes.skills import skill_router
+from routes.swap_requests import swap_request_router
+from routes.user import limiter, user_router
+from routes.user_skills import user_skill_router
+from routes.websocket import ws_router
 
 
 # Load secrets when the application starts
@@ -30,13 +33,18 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+app.state.limiter = limiter
+
+app.add_exception_handler(
+    RateLimitExceeded,
+    _rate_limit_exceeded_handler
 )
 
 

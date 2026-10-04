@@ -80,17 +80,16 @@ async def create_skill(skill_data: SkillCreate, db: AsyncSession = Depends(get_d
         await db.rollback()
         raise HTTPException(status_code=400, detail="Skill could not be created")
 
-
-@admin_router.delete("/skills/{id}",status_code=200)
-async def delete_skill_by_id(id:UUID,db:AsyncSession = Depends(get_db)):
-    await db.execute(delete(Skill).where(Skill.id==id))
+@admin_router.delete("/skills/{id}", status_code=200)
+async def delete_skill_by_id(id: UUID, db: AsyncSession = Depends(get_db)):
     try:
+        await db.execute(delete(Skill).where(Skill.id == id))
         await db.commit()
-        return {"status":"ok"}
+        return {"status": "ok"}
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(status_code=400, detail="Skill could not be delete")
-
+        raise HTTPException(status_code=400, detail="Cannot delete a skill that users have already added to their profiles")
+        
 @admin_router.get("/users/stats")
 async def user_stats(db: AsyncSession = Depends(get_db)):
     total = await db.scalar(select(func.count()).select_from(User))
